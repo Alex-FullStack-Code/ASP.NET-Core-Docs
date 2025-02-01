@@ -1,0 +1,567 @@
+In ASP.NET Core, 
+there are several common ways to handle authentication. 
+Here are the most popular methods:
+
+************************
+1. Cookie Authentication
+************************
+
+Demo:
+ASP.NET-Core-3.1-MVC-Cookie-Authentication
+
+It uses cookies to store authentication information 
+(like a user’s identity) in the client’s browser. 
+
+The server sends a cookie after the user logs in, 
+and this cookie is sent with 
+subsequent-последващо requests for authentication.
+
+When to use: 
+Ideal for web applications where 
+the server manages user sessions.
+
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+        .AddCookie(options =>
+        {
+            options.LoginPath = "/Account/Login";  // Redirect to login page
+            options.AccessDeniedPath = "/Account/AccessDenied";  // Redirect on access denied
+        });
+}
+
+*********************
+2. JWT Authentication 
+*********************
+
+Demos:
+ASP.NET-Core-8-API-JWT-Roles
+ASP.NET-Core-9-API-JwtBearer-EF-PostgreSQL-SeedData-JWT-Refresh-Login-Signup 
+
+A JWT is created after successful login and 
+is sent with each HTTP request to 
+ 
+JWT (JSON Web Token) and 
+JWT Bearer are related 
+but Not Exactly the Same Thing.
+
+1. JWT: 
+This is the standard for 
+securely transmitting information between 
+parties as a JSON object. 
+  
+2. JWT Bearer: 
+This is a term used when 
+you're using a JWT as a bearer token 
+in an HTTP request, 
+particularly in authorization headers. 
+
+"Bearer" means that 
+the token is being used as proof of identity, 
+granting access to resources. 
+
+When you send a JWT in 
+the Authorization header of an HTTP request, 
+it often looks like this:
+
+Authorization: Bearer <your_jwt_token>
+
+So, JWT is the format of the token itself, 
+while JWT Bearer refers to using it as 
+a type of token in authentication or 
+authorization requests.
+
+JWT е просто криптирания стринг, 
+който се връща, а JWT Bearer има 
+Authorization: Bearer <your_jwt_token>
+и там е същия криптиран стринг!
+
+Криптираният JWT (и двата) съдържат claims.
+ 
+Claims are pieces of information stored in 
+the payload of the JWT and can be about the user, 
+authorization details, or other metadata.
+
+There are 3 main types of claims in a JWT:
+
+1. Registered Claims: 
+These are predefined claims 
+that are not mandatory but are recommended 
+to provide a set of useful, interoperable claims. 
+Some examples include:
+
+1.1. sub (subject): 
+Identifies the principal that is the subject of the JWT.
+
+1.2. iss (issuer): 
+Identifies who issued the JWT.
+
+1.3. exp (expiration time): 
+The time at which the JWT expires.
+
+1.4. iat (issued at): 
+The time when the JWT was issued.
+
+2. Public Claims: 
+These are claims that you can define 
+for your application, but you should ensure 
+they are unique to avoid conflicts. 
+Examples could be things like role or user_id.
+
+3. Private Claims: 
+These are custom claims created 
+to share information between parties 
+that agree on using them. 
+
+They are not registered or public 
+but are specific to your application's use case.
+
+JWT is used in a Bearer token 
+(like in HTTP Authorization headers), 
+it typically includes claims 
+that carry information such as who the user is, 
+what permissions they have, and 
+when the token will expire. 
+
+This helps the receiving server 
+authenticate and authorize the request.
+
+When to use: 
+Ideal for REST APIs, 
+Single Page Applications (SPA), and 
+microservices where 
+stateless authentication is preferred.
+
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidIssuer = "your_issuer",
+                ValidAudience = "your_audience",
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("your_secret_key"))
+            };
+        });
+}
+
+********************************
+3. OAuth2, OpenID Connect - OIDC
+********************************
+
+How it works: 
+These are standards for third-party authentication 
+logging with Google, Facebook, or other identity providers. 
+
+OpenID Connect extends OAuth2 for 
+identity authentication and authorization.
+
+When to use: 
+Ideal for applications that require 
+integration with external identity providers or 
+for single sign-on (SSO) solutions.
+/single sign-on - единично влизане/
+
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddAuthentication(OAuthDefaults.DisplayName)
+        .AddGoogle(options =>
+        {
+            options.ClientId = "your-client-id";
+            options.ClientSecret = "your-client-secret";
+        });
+}
+
+Securing an ASP.NET Core 6 application with OAuth2 
+and OpenID Connect involves integrating authentication 
+and authorization using standards-based protocols. 
+
+OAuth2 is a framework for securing APIs, 
+while OpenID Connect (OIDC) builds on OAuth2 to 
+provide identity information. 
+
+Here's a step-by-step guide to help you configure it 
+in your ASP.NET Core 6 application:
+
+1. ASP.NET Core 6 application set up 
+(MVC, Web API, or Blazor).
+
+2. OAuth2/OpenID Connect provider: 
+This could be something like IdentityServer, 
+Auth0, Azure AD, Google Identity Platform ...
+
+3. NuGet Packages: 
+The key package you'll need is 
+Microsoft.AspNetCore.Authentication.OpenIdConnect.
+
+Steps:
+
+1. Install Required NuGet Packages   
+dotnet add package Microsoft.AspNetCore.Authentication.OpenIdConnect
+
+2. Configure Authentication in Program.cs
+Open your Program.cs file 
+(in ASP.NET Core 6, Startup.cs is replaced by Program.cs), 
+and add the authentication services configuration.
+
+************************
+var builder = WebApplication.CreateBuilder(args);
+
+// Add services to the container.
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+})
+.AddCookie(options =>
+{
+    options.Cookie.Name = "YourAppCookie";
+})
+.AddOpenIdConnect(options =>
+{
+    options.Authority = "https://your-identity-provider.com"; // E.g., Auth0, IdentityServer, Azure AD
+    options.ClientId = "your-client-id";
+    options.ClientSecret = "your-client-secret";  // If using confidential client
+    options.ResponseType = "code";  // Authorization Code Flow
+    options.Scope.Add("openid");  // OpenID Connect scope (for authentication)
+    options.Scope.Add("profile"); // Optional: for profile information
+    options.Scope.Add("email");   // Optional: for email information
+
+    options.SaveTokens = true;  // Save the tokens after authentication
+    options.GetClaimsFromUserInfoEndpoint = true;  // Fetch claims from the userinfo endpoint
+
+    // Additional configurations for token validation
+    options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidIssuer = "https://your-identity-provider.com",  // The issuer of the token
+        ValidateAudience = true,
+        ValidAudience = "your-client-id",  // The expected audience
+        ValidateLifetime = true,
+    };
+
+    options.Events = new OpenIdConnectEvents
+    {
+        OnTokenValidated = context =>
+        {
+            // Token validation logic if needed
+            return Task.CompletedTask;
+        },
+        OnAuthenticationFailed = context =>
+        {
+            context.Response.Redirect("/Home/Error");
+            context.HandleResponse();
+            return Task.CompletedTask;
+        }
+    };
+});
+
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = options.DefaultPolicy;  // Default authorization policy
+});
+
+builder.Services.AddRazorPages();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapRazorPages();
+
+app.Run();
+************************
+
+2.1. options.Authority: 
+The URL of your OpenID Connect provider 
+(e.g., IdentityServer, Auth0, or Azure AD).
+
+2.2. options.ClientId and options.ClientSecret: 
+Credentials provided by your Identity Provider.
+
+2.3. options.ResponseType: 
+Authorization code flow (code), 
+which is the most common and secure flow.
+
+2.4. options.SaveTokens: 
+Ensures that access and refresh tokens are 
+stored in the cookie.
+
+3. Secure Controller Actions
+Now that the authentication is set up globally, 
+you can secure specific actions or controllers. 
+You can apply the [Authorize] attribute to 
+controller actions that require authenticated users.
+
+Example:
+******
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+[Authorize]
+public class SecureController : Controller
+{
+    public IActionResult Index()
+    {
+        return View();
+    }
+}
+
+******
+
+4. Logout Implementation
+To implement logout, add the following to 
+your Program.cs to handle logout functionality:
+
+******
+builder.Services.AddAuthentication().AddOpenIdConnect(options =>
+{
+    options.SignOutScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    // Configure other properties as before
+});
+
+app.MapGet("/logout", async (HttpContext context) =>
+{
+    await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    await context.SignOutAsync(OpenIdConnectDefaults.AuthenticationScheme, new AuthenticationProperties
+    {
+        RedirectUri = "/"
+    });
+});
+******
+
+This route logs the user out of 
+both your application and the Identity Provider.
+
+5. Handling Tokens
+
+If your application needs to access APIs or 
+external services on behalf of the user 
+(using access tokens), you can retrieve 
+the access token from the authenticated user's context.
+
+Example to get the access token 
+in a controller action:
+
+var accessToken = await HttpContext.GetTokenAsync("access_token");
+
+6. Testing Your App
+
+6.1. When you access a secure page, 
+the app should redirect you to 
+the Identity Provider’s login page 
+(if not logged in).
+
+6.2. After successful login, 
+it will redirect back to your app and 
+the user will have access to the protected page.
+
+6.3. If you log out, 
+both the application and Identity Provider 
+will handle the session termination.
+
+Тази настройка осигурява основна интеграция на 
+OAuth2 и OpenID Connect в приложение ASP.NET Core 6. 
+Протоколът OAUTH2 осигурява API, 
+докато OpenID Connect ви помага да извлечете информация за 
+идентичността, като например профила на потребителя. 
+В зависимост от вашия Identity Provider 
+(например Azure AD, Auth0 или IdentityServer), 
+може да се наложи да настроите някои данни за конфигурацията. 
+
+*********************************************
+4. Identity Framework - ASP.NET Core Identity
+*********************************************
+
+How it works: 
+ASP.NET Core Identity is a comprehensive 
+authentication and authorization system 
+built into ASP.NET Core, 
+handling common scenarios such as 
+registration, login, password reset, roles, claims
+
+When to use: 
+Ideal for web applications that need a complete, 
+customizable, and feature-rich authentication system.
+
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddIdentity<ApplicationUser, IdentityRole>()
+        .AddEntityFrameworkStores<ApplicationDbContext>()
+        .AddDefaultTokenProviders();
+}
+
+Here are some key features and 
+concepts in ASP.NET Core Identity: 
+
+4.1. User Authentication: 
+It provides features to handle 
+user registration, login, and authentication via 
+cookies, JWT (JSON Web Tokens), or 
+external authentication providers 
+(like Google, Facebook, etc.).
+
+
+4.2. Authorization: 
+You can manage roles and permissions, 
+allowing certain parts of the application to be 
+accessible only to specific users or roles.
+
+4.3. User Management: 
+ASP.NET Core Identity supports features like 
+password reset, email confirmation, 
+two-factor authentication (2FA), and more.
+
+4.4. Customization: 
+You can customize the Identity system 
+to fit your application’s needs, such as 
+adding custom fields to the user entity 
+(phone number, profile picture), or 
+integrating it with custom databases.
+
+4.5. Persistent Storage: 
+By default, ASP.NET Core Identity uses 
+a relational database like SQL Server to 
+store user information, but it can also work 
+with other storage options.
+
+Basic Setup:
+To get started with ASP.NET Core Identity, 
+follow these general steps:
+
+*1* Install NuGet packages: 
+To use Identity in your project, 
+install these packages via NuGet:
+
+Microsoft.AspNetCore.Identity.EntityFrameworkCore
+Microsoft.EntityFrameworkCore.SqlServer (or another database provider)
+Microsoft.EntityFrameworkCore.Tools
+
+*2* Create a Database Context: 
+Typically, you’ll extend IdentityDbContext to 
+create a custom database context.
+
+public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        : base(options) { }
+}
+
+public class ApplicationUser : IdentityUser
+{
+    // Add custom properties here if needed
+}
+
+*3*
+Configure Identity in Startup: 
+In Startup.cs (or Program.cs in .NET 6+), 
+configure Identity and connect it to your database context.
+
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+
+    services.AddIdentity<ApplicationUser, IdentityRole>()
+        .AddEntityFrameworkStores<ApplicationDbContext>()
+        .AddDefaultTokenProviders();
+}
+ 
+*4*
+Set Up Authentication: 
+In the Configure method of Startup.cs, 
+use authentication middleware:
+
+public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+{
+    if (env.IsDevelopment())
+    {
+        app.UseDeveloperExceptionPage();
+    }
+    else
+    {
+        app.UseExceptionHandler("/Home/Error");
+        app.UseHsts();
+    }
+
+    app.UseHttpsRedirection();
+    app.UseStaticFiles();
+
+    app.UseRouting();
+
+    app.UseAuthentication();  // Add this to enable authentication
+    app.UseAuthorization();
+
+    app.UseEndpoints(endpoints =>
+    {
+        endpoints.MapControllerRoute(
+            name: "default",
+            pattern: "{controller=Home}/{action=Index}/{id?}");
+        endpoints.MapRazorPages();  // For Razor Pages applications
+    });
+}
+
+*5* Run Migrations: 
+To apply the database schema, 
+run the migrations.
+
+dotnet ef migrations add InitialCreate
+dotnet ef database update
+
+After these steps, 
+you’ll have ASP.NET Core Identity set up 
+in your application, and you can start using 
+its features to manage users and authentication.
+
+*************************
+5. Windows Authentication
+*************************
+
+How it works: 
+The server relies on the operating system to 
+authenticate users. 
+
+This is commonly used for intranet applications 
+where users are already authenticated by Windows.
+
+When to use: 
+Ideal for enterprise environments with 
+an Active Directory or Windows domain.
+
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddAuthentication(IISDefaults.AuthenticationScheme);
+}
+
+************************************ 
+6. External Authentication Providers
+************************************
+
+How it works: 
+Integrates with third-party authentication providers 
+such as Facebook, Google, Twitter, Microsoft
+These providers handle the authentication flow, 
+and once authenticated, they send an access 
+token to the application.
+
+When to use: 
+Ideal when users can authenticate using 
+existing accounts on external platforms.
+
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddAuthentication()
+        .AddFacebook(options =>
+        {
+            options.AppId = "your-app-id";
+            options.AppSecret = "your-app-secret";
+        });
+}
+
